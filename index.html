@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="cupcake">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Moments | ❤️</title>
+    <link rel="icon" type="image/png" href="keyjel.png">
+    
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+</head>
+<body class="bg-base-200 min-h-screen pt-16"> 
+    <div class="navbar bg-base-100 shadow-md fixed top-0 left-0 right-0 z-[100]">
+        <div class="navbar-start">
+            <div class="dropdown">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" /> </svg>
+                </div>
+                <ul tabindex="0" class="menu menu-sm dropdown-content bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow">
+                    <li><a href="admin">Admin Menu</a></li>
+                    <li><a onclick="handleGlobalShare()">Share Web</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="navbar-center">
+            <a class="btn btn-ghost text-xl font-bold tracking-widest text-secondary">KEYJEL</a>
+        </div>
+        <div class="navbar-end">
+            <div class="avatar">
+                <div class="w-10 rounded-full border-2 border-primary/20">
+                    <img src="keyjel.png" onerror="this.src='https://ui-avatars.com/api/?name=KJ&background=random'" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="hero min-h-[30vh] bg-base-100 shadow-md mb-8">
+        <div class="hero-content text-center pt-10">
+            <div class="max-w-md animate__animated animate__fadeIn">
+                <h1 class="text-4xl font-bold text-secondary">Our Moments</h1>
+                <p class="py-4 text-sm italic opacity-70">"Every picture tells a story, and every story is about us."</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="max-w-7xl mx-auto px-4 pb-20">
+        <div id="galleryContainer" class="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+            <div class="h-64 bg-base-300 rounded-xl animate-pulse"></div>
+        </div>
+    </div>
+
+    <dialog id="modal_comment" class="modal modal-bottom sm:modal-middle">
+        <div class="modal-box p-0 max-h-[80vh] flex flex-col">
+            <div class="p-4 border-b sticky top-0 bg-base-100 z-10 flex justify-between items-center">
+                <h3 class="font-bold text-lg">Komentar</h3>
+                <button class="btn btn-sm btn-circle btn-ghost" onclick="modal_comment.close()">✕</button>
+            </div>
+            <div id="comment_list" class="flex-1 overflow-y-auto p-4 space-y-4 min-h-[300px] bg-base-200/50"></div>
+            <div class="p-4 border-t bg-base-100 sticky bottom-0">
+                <button onclick="document.getElementById('form_input_komen').classList.toggle('hidden')" class="btn btn-primary btn-block gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7z" /></svg>
+                    Tulis Komentar...
+                </button>
+                <div id="form_input_komen" class="hidden mt-4 space-y-3 animate__animated animate__fadeInUp">
+                    <input type="hidden" id="target_post_id">
+                    <input type="text" id="comment_name" placeholder="Nama kamu..." class="input input-bordered w-full input-sm" />
+                    <textarea id="comment_text" placeholder="Pesan manis kamu..." class="textarea textarea-bordered w-full textarea-sm h-20"></textarea>
+                    <button class="btn btn-primary btn-sm btn-block" id="btn_send_comment">Kirim Sekarang</button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <footer class="footer footer-center bg-base-100 text-base-content rounded p-10 mt-10">
+      <aside>
+        <p class="font-bold">Copyright © - 2026</p>
+        <p>KeyJel All Right Reserved</p>
+      </aside>
+    </footer>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+        const supabaseUrl = 'https://ouzvbeudwmzhnwcgrqah.supabase.co';
+        const supabaseKey = 'sb_publishable_z6NTv-MfTdrZTlDrltVKxw_nKMwthLG';
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const galleryContainer = document.getElementById('galleryContainer');
+
+        // FUNGSI SHARE GLOBAL DARI NAVBAR
+        window.handleGlobalShare = async () => {
+            const shareData = {
+                title: "Our Moments - KeyJel",
+                text: "Lihat galeri momen spesial kami di sini!",
+                url: window.location.href,
+            };
+
+            try {
+                if (navigator.share) {
+                    await navigator.share(shareData);
+                } else {
+                    await navigator.clipboard.writeText(window.location.href);
+                    alert("Link berhasil disalin!");
+                }
+            } catch (err) {
+                console.log(`Error: ${err}`);
+            }
+        };
+
+        // --- FETCH DATA ---
+        async function loadGallery() {
+            // Memanggil post sekaligus ID komentar untuk dihitung
+            const { data: posts, error } = await supabase.from('posts').select('*, comments(id)').order('created_at', { ascending: false });
+            if (error) return;
+            renderGallery(posts);
+        }
+
+        function renderGallery(posts) {
+            galleryContainer.innerHTML = '';
+            posts.forEach(post => {
+                const isLiked = localStorage.getItem(`liked_${post.id}`);
+                const isVideo = post.image_url.match(/\.(mp4|webm|ogg|mov)$/i);
+                
+                // Menghitung jumlah komentar
+                const commentCount = post.comments ? post.comments.length : 0;
+                
+                const mediaHtml = isVideo 
+                    ? `<video src="${post.image_url}" class="w-full" muted loop autoplay playsinline></video>`
+                    : `<img src="${post.image_url}" class="w-full hover:scale-105 transition-transform duration-500" />`;
+
+                galleryContainer.innerHTML += `
+                    <div class="break-inside-avoid mb-6 card bg-base-100 shadow-xl overflow-hidden animate__animated animate__fadeInUp">
+                        <figure>${mediaHtml}</figure>
+                        <div class="card-body p-4">
+                            <p class="text-sm italic opacity-90">"${post.caption}"</p>
+                            <div class="card-actions justify-between items-center mt-4 border-t pt-3">
+                                <div class="flex gap-4">
+                                    <button onclick="handleLike(${post.id}, ${post.likes})" id="btn-like-${post.id}" class="flex items-center gap-1 hover:text-error transition-colors ${isLiked ? 'text-error font-bold' : ''}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="${isLiked ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                                        <span id="count-${post.id}" class="text-xs font-medium">${post.likes}</span>
+                                    </button>
+                                    
+                                    <button onclick="openComment(${post.id})" class="flex items-center gap-1 hover:text-primary transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                                        <span class="text-xs font-medium">${commentCount}</span>
+                                    </button>
+                                </div>
+                                <span class="text-[10px] opacity-40">${new Date(post.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        // --- KOMENTAR & LIKE ---
+        window.openComment = async (postId) => {
+            document.getElementById('target_post_id').value = postId;
+            document.getElementById('form_input_komen').classList.add('hidden');
+            const listElem = document.getElementById('comment_list');
+            listElem.innerHTML = '<div class="flex justify-center"><span class="loading loading-dots loading-md text-primary"></span></div>';
+            modal_comment.showModal();
+
+            const { data: comments } = await supabase.from('comments').select('*').eq('post_id', postId).order('created_at', { ascending: false });
+            listElem.innerHTML = comments.length === 0 ? '<div class="text-center py-10 opacity-50">Belum ada komentar.</div>' : '';
+            comments.forEach(c => {
+                listElem.innerHTML += `<div class="flex gap-3 animate__animated animate__fadeIn"><div class="avatar placeholder"><div class="bg-neutral text-neutral-content rounded-full w-8 h-8"><span class="text-xs">${c.nama.charAt(0).toUpperCase()}</span></div></div><div class="flex flex-col bg-base-100 p-3 rounded-2xl shadow-sm max-w-[80%]"><span class="text-[10px] font-bold text-primary mb-1">${c.nama}</span><p class="text-sm">${c.pesan}</p></div></div>`;
+            });
+        };
+
+        document.getElementById('btn_send_comment').addEventListener('click', async () => {
+            const postId = document.getElementById('target_post_id').value;
+            const nama = document.getElementById('comment_name').value;
+            const pesan = document.getElementById('comment_text').value;
+            if (!nama || !pesan) return alert("Isi nama & pesan!");
+            
+            const { error } = await supabase.from('comments').insert([{ post_id: postId, nama, pesan }]);
+            if (!error) { 
+                document.getElementById('comment_text').value = ''; 
+                await openComment(postId); 
+                loadGallery(); // Refresh UI untuk update angka komentar
+            }
+        });
+
+        window.handleLike = async (id, currentLikes) => {
+            if (localStorage.getItem(`liked_${id}`)) return;
+            const { error } = await supabase.from('posts').update({ likes: currentLikes + 1 }).eq('id', id);
+            if (!error) {
+                localStorage.setItem(`liked_${id}`, 'true');
+                document.getElementById(`count-${id}`).innerText = currentLikes + 1;
+                document.getElementById(`btn-like-${id}`).classList.add('text-error', 'font-bold');
+            }
+        };
+
+        loadGallery();
+    </script>
+</body>
+</html>
