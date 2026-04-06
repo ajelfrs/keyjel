@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cupcake"> <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login | Our Moments</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Animasi biar makin smooth */
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="bg-base-200 min-h-screen flex items-center justify-center p-4">
+
+    <div class="card w-full max-w-sm shadow-2xl bg-base-100 glass-effect">
+        <div class="card-body">
+            <div class="text-center mb-4">
+                <center><img src="../keyjel.png" style="width:100px;height:100px;" class="mask mask-circle"></center>
+                <h2 class="text-3xl font-bold text-secondary">Admin Access</h2>
+                <p class="text-sm text-base-content/70">Khusus buat update momen kita ❤️</p>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-semibold">Email</span>
+                    </label>
+                    <input type="email" id="email" placeholder="admin@example.com" class="input input-bordered focus:input-primary" required />
+                </div>
+
+                <div class="form-control mt-2">
+                    <label class="label">
+                        <span class="label-text font-semibold">Password</span>
+                    </label>
+                    <input type="password" id="password" placeholder="••••••••" class="input input-bordered focus:input-primary" required />
+                </div>
+
+                <div id="errorMessage" class="mt-4 hidden text-error text-xs bg-error/10 p-2 rounded-lg text-center font-medium">
+                    Email atau Password salah!
+                </div>
+
+                <div class="form-control mt-6">
+                    <button type="submit" id="loginBtn" class="btn btn-secondary">
+                        Login Sekarang
+                    </button>
+                </div>
+            </form>
+
+            <div class="mt-4 text-center">
+                <a href="index.html" class="link link-hover text-sm opacity-50">← Balik ke Galeri</a>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        // Ganti dengan Firebase Config lu
+        const firebaseConfig = {
+            apiKey: "AIzaSyAIImmquRs6nQ3dlY9EF-9oodVi53eoB0A",
+            authDomain: "keyjell.firebaseapp.com",
+            projectId: "keyjell",
+            storageBucket: "keyjell.firebasestorage.app",
+            messagingSenderId: "453410649070",
+            appId: "1:453410649070:web:58a3c49253c210e512d4ff",
+            measurementId: "G-G68Y8F6X3R"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const errorMessage = document.getElementById('errorMessage');
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Loading state
+            loginBtn.classList.add('loading');
+            errorMessage.classList.add('hidden');
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            signInWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    // Berhasil Login
+                    window.location.href = "../admin/index.html";
+                })
+                .catch((error) => {
+                    // Gagal Login
+                    loginBtn.classList.remove('loading');
+                    errorMessage.classList.remove('hidden');
+                    console.error(error.message);
+                });
+        });
+    </script>
+</body>
+</html>
