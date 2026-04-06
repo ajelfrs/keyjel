@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="cupcake">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Our Moments</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-base-200 min-h-screen pb-10">
+
+    <div class="navbar bg-base-100 shadow-md px-4 md:px-10">
+        <div class="flex-1">
+            <a class="btn btn-ghost text-xl">Admin Panel ❤️</a>
+        </div>
+        <div class="flex-none">
+            <button id="logoutBtn" class="btn btn-outline btn-error btn-sm">Logout</button>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto mt-8 px-4">
+        
+        <div class="card bg-base-100 shadow-xl mb-10">
+            <div class="card-body">
+                <h2 class="card-title mb-4">Upload Momen Baru</h2>
+                <form id="uploadForm" class="space-y-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Pilih Foto</span></label>
+                        <input type="file" id="fileInput" class="file-input file-input-bordered file-input-secondary w-full" accept="image/*" required />
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Caption / Cerita</span></label>
+                        <textarea id="captionInput" class="textarea textarea-bordered h-24" placeholder="Tulis momen indah di sini..." required></textarea>
+                    </div>
+                    <button type="submit" id="submitBtn" class="btn btn-secondary w-full text-white">Upload Postingan</button>
+                </form>
+                <progress id="uploadProgress" class="progress progress-primary w-full mt-4 hidden" value="0" max="100"></progress>
+            </div>
+        </div>
+
+        <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+            Daftar Momen <div class="badge badge-secondary" id="postCount">0</div>
+        </h2>
+        
+        <div id="postsList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="skeleton w-full h-32"></div>
+            <div class="skeleton w-full h-32"></div>
+        </div>
+
+    </div>
+
+    <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    // Import Supabase
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+    // Config Firebase
+    const firebaseConfig = { /* config firebase lu */
+    apiKey: "AIzaSyAIImmquRs6nQ3dlY9EF-9oodVi53eoB0A",
+            authDomain: "keyjell.firebaseapp.com",
+            projectId: "keyjell",
+            storageBucket: "keyjell.firebasestorage.app",
+            messagingSenderId: "453410649070",
+            appId: "1:453410649070:web:58a3c49253c210e512d4ff",
+            measurementId: "G-G68Y8F6X3R"
+        
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // Config Supabase
+    const supabaseUrl = 'https://ouzvbeudwmzhnwcgrqah.supabase.co';
+    const supabaseKey = 'sb_publishable_z6NTv-MfTdrZTlDrltVKxw_nKMwthLG';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Proteksi Halaman
+    onAuthStateChanged(auth, (user) => {
+        if (!user) window.location.href = "login.html";
+    });
+
+    // --- LOGIC UPLOAD KE SUPABASE ---
+    const uploadForm = document.getElementById('uploadForm');
+    
+    uploadForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const file = document.getElementById('fileInput').files[0];
+        const caption = document.getElementById('captionInput').value;
+        const submitBtn = document.getElementById('submitBtn');
+
+        if(!file) return;
+        submitBtn.disabled = true;
+
+        // 1. Upload Gambar ke Supabase Storage
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        const filePath = `gallery/${fileName}`;
+
+        const { data: storageData, error: storageError } = await supabase.storage
+            .from('gallery')
+            .upload(filePath, file);
+
+        if (storageError) {
+            alert("Gagal upload gambar: " + storageError.message);
+            submitBtn.disabled = false;
+            return;
+        }
+
+        // 2. Ambil Public URL
+        const { data: { publicUrl } } = supabase.storage
+            .from('gallery')
+            .getPublicUrl(filePath);
+
+        // 3. Simpan Metadata ke Tabel 'posts'
+        const { error: dbError } = await supabase
+            .from('posts')
+            .insert([{ 
+                image_url: publicUrl, 
+                image_path: filePath, 
+                caption: caption 
+            }]);
+
+        if (dbError) {
+            alert("Gagal simpan data: " + dbError.message);
+        } else {
+            alert("Momen berhasil diabadikan!");
+            uploadForm.reset();
+        }
+        submitBtn.disabled = false;
+    });
+    
+    // --- BAGIAN FETCH & TAMPILIN POSTINGAN DI ADMIN ---
+const postsList = document.getElementById('postsList');
+
+async function loadAdminPosts() {
+    // Ambil data dari Supabase
+    const { data: posts, error } = await supabase
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error("Gagal ambil data:", error.message);
+        return;
+    }
+
+    postsList.innerHTML = "";
+    document.getElementById('postCount').innerText = posts.length;
+
+    posts.forEach((post) => {
+        // Cek apakah file itu video atau foto buat thumbnail-nya
+        const isVideo = post.image_url.match(/\.(mp4|webm|ogg|mov)$/i);
+        const mediaPreview = isVideo 
+            ? `<video src="${post.image_url}" class="h-20 w-20 object-cover rounded"></video>`
+            : `<img src="${post.image_url}" class="h-20 w-20 object-cover rounded" />`;
+
+        const card = `
+            <div class="card card-side bg-base-100 shadow-sm border border-base-200 p-2 items-center gap-4">
+                <figure class="flex-none">
+                    ${mediaPreview}
+                </figure>
+                <div class="flex-1 overflow-hidden">
+                    <p class="text-xs italic truncate">"${post.caption}"</p>
+                    <div class="card-actions justify-end mt-2">
+                        <button onclick="deletePost(${post.id}, '${post.image_path}')" 
+                                class="btn btn-error btn-xs btn-outline">
+                            Hapus
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        postsList.innerHTML += card;
+    });
+}
+
+// --- FUNGSI HAPUS ---
+window.deletePost = async (id, imagePath) => {
+    if (confirm("Yakin mau hapus momen ini?")) {
+        try {
+            // 1. Hapus dari Database
+            const { error: dbError } = await supabase
+                .from('posts')
+                .delete()
+                .eq('id', id);
+
+            if (dbError) throw dbError;
+
+            // 2. Hapus file dari Storage
+            const { error: storageError } = await supabase.storage
+                .from('gallery')
+                .remove([imagePath]);
+
+            if (storageError) console.warn("File di storage gagal dihapus, tapi data tabel sukses.");
+
+            alert("Momen berhasil dihapus!");
+            loadAdminPosts(); // Refresh list
+        } catch (err) {
+            alert("Gagal hapus: " + err.message);
+        }
+    }
+};
+
+// Jalankan fungsi load saat halaman siap
+loadAdminPosts();
+
+    // --- LOGIC FETCH & DELETE ---
+    // (Gunakan supabase.from('posts').select('*') dan supabase.from('posts').delete())
+</script>
+
+</body>
+</html>
