@@ -71,6 +71,40 @@
             </div>
         </div>
     </dialog>
+        <div class="max-w-3xl mx-auto px-4 mt-8 mb-8">
+        <div class="bg-base-100 shadow-xl rounded-2xl p-6 border border-primary/20 text-center animate__animated animate__fadeIn">
+            <h3 class="text-xl font-bold text-secondary mb-2">Our Journey Together ❤️</h3>
+            <p class="text-sm opacity-70 mb-6">Since 4 April 2026</p>
+            
+            <div class="grid grid-flow-col gap-2 sm:gap-5 text-center auto-cols-max justify-center">
+                <div class="flex flex-col p-2 sm:p-3 bg-primary/10 rounded-box text-primary">
+                    <span class="countdown font-mono text-3xl sm:text-4xl justify-center">
+                        <span id="count-days" style="--value:0;"></span>
+                    </span>
+                    <span class="text-xs sm:text-sm mt-1 font-bold">Hari</span>
+                </div>
+                <div class="flex flex-col p-2 sm:p-3 bg-primary/10 rounded-box text-primary">
+                    <span class="countdown font-mono text-3xl sm:text-4xl justify-center">
+                        <span id="count-hours" style="--value:0;"></span>
+                    </span>
+                    <span class="text-xs sm:text-sm mt-1 font-bold">Jam</span>
+                </div>
+                <div class="flex flex-col p-2 sm:p-3 bg-primary/10 rounded-box text-primary">
+                    <span class="countdown font-mono text-3xl sm:text-4xl justify-center">
+                        <span id="count-minutes" style="--value:0;"></span>
+                    </span>
+                    <span class="text-xs sm:text-sm mt-1 font-bold">Menit</span>
+                </div>
+                <div class="flex flex-col p-2 sm:p-3 bg-primary/10 rounded-box text-primary">
+                    <span class="countdown font-mono text-3xl sm:text-4xl justify-center">
+                        <span id="count-seconds" style="--value:0;"></span>
+                    </span>
+                    <span class="text-xs sm:text-sm mt-1 font-bold">Detik</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <footer class="footer footer-center bg-base-100 text-base-content rounded p-10 mt-10">
       <aside>
@@ -193,6 +227,33 @@
         };
 
         loadGallery();
+                // --- COUNT UP TIMER HUBUNGAN ---
+        function runRelationshipTimer() {
+            // Ubah tahun '2026' di bawah kalau kalian jadian di tahun sebelumnya
+            const startDate = new Date('2026-04-04T02:46:00').getTime();
+            
+            setInterval(() => {
+                const now = new Date().getTime();
+                const difference = now - startDate;
+                
+                // Kalau tanggal belum lewat, biarin 0
+                if (difference < 0) return;
+                
+                const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+                
+                // Update UI DaisyUI Countdown
+                document.getElementById('count-days').style.setProperty('--value', days);
+                document.getElementById('count-hours').style.setProperty('--value', hours);
+                document.getElementById('count-minutes').style.setProperty('--value', minutes);
+                document.getElementById('count-seconds').style.setProperty('--value', seconds);
+            }, 1000);
+        }
+        
+        // Jalankan timer
+        runRelationshipTimer();
     </script>
 </body>
 </html>
