@@ -71,7 +71,8 @@
             </div>
         </div>
     </dialog>
-        <div class="max-w-3xl mx-auto px-4 mt-8 mb-8">
+    
+    <div class="max-w-3xl mx-auto px-4 mt-8 mb-8">
         <div class="bg-base-100 shadow-xl rounded-2xl p-6 border border-primary/20 text-center animate__animated animate__fadeIn">
             <h3 class="text-xl font-bold text-secondary mb-2">Our Journey Together ❤️</h3>
             <p class="text-sm opacity-70 mb-6">Since 4 April 2026</p>
@@ -104,7 +105,6 @@
             </div>
         </div>
     </div>
-
 
     <footer class="footer footer-center bg-base-100 text-base-content rounded p-10 mt-10">
       <aside>
@@ -146,12 +146,21 @@
         async function loadGallery() {
             // Memanggil post sekaligus ID komentar untuk dihitung
             const { data: posts, error } = await supabase.from('posts').select('*, comments(id)').order('created_at', { ascending: false });
-            if (error) return;
+            if (error) {
+                console.error("Gagal memuat galeri:", error.message);
+                return;
+            }
             renderGallery(posts);
         }
 
         function renderGallery(posts) {
             galleryContainer.innerHTML = '';
+            
+            if (posts.length === 0) {
+                galleryContainer.innerHTML = '<div class="col-span-full text-center py-10 opacity-50">Belum ada momen yang dibagikan.</div>';
+                return;
+            }
+
             posts.forEach(post => {
                 const isLiked = localStorage.getItem(`liked_${post.id}`);
                 const isVideo = post.image_url.match(/\.(mp4|webm|ogg|mov)$/i);
@@ -159,16 +168,17 @@
                 // Menghitung jumlah komentar
                 const commentCount = post.comments ? post.comments.length : 0;
                 
+                // Tambahin loading="lazy" buat optimasi gambar
                 const mediaHtml = isVideo 
-                    ? `<video src="${post.image_url}" class="w-full" muted loop autoplay playsinline></video>`
-                    : `<img src="${post.image_url}" class="w-full hover:scale-105 transition-transform duration-500" />`;
+                    ? `<video src="${post.image_url}" class="w-full object-cover" muted loop autoplay playsinline></video>`
+                    : `<img src="${post.image_url}" loading="lazy" class="w-full object-cover hover:scale-105 transition-transform duration-500" alt="Momen spesial" />`;
 
                 galleryContainer.innerHTML += `
                     <div class="break-inside-avoid mb-6 card bg-base-100 shadow-xl overflow-hidden animate__animated animate__fadeInUp">
-                        <figure>${mediaHtml}</figure>
+                        <figure class="rounded-t-2xl">${mediaHtml}</figure>
                         <div class="card-body p-4">
                             <p class="text-sm italic opacity-90">"${post.caption}"</p>
-                            <div class="card-actions justify-between items-center mt-4 border-t pt-3">
+                            <div class="card-actions justify-between items-center mt-4 border-t border-base-200 pt-3">
                                 <div class="flex gap-4">
                                     <button onclick="handleLike(${post.id}, ${post.likes})" id="btn-like-${post.id}" class="flex items-center gap-1 hover:text-error transition-colors ${isLiked ? 'text-error font-bold' : ''}">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="${isLiked ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
@@ -180,7 +190,7 @@
                                         <span class="text-xs font-medium">${commentCount}</span>
                                     </button>
                                 </div>
-                                <span class="text-[10px] opacity-40">${new Date(post.created_at).toLocaleDateString()}</span>
+                                <span class="text-[10px] opacity-40">${new Date(post.created_at).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}</span>
                             </div>
                         </div>
                     </div>`;
@@ -192,51 +202,87 @@
             document.getElementById('target_post_id').value = postId;
             document.getElementById('form_input_komen').classList.add('hidden');
             const listElem = document.getElementById('comment_list');
-            listElem.innerHTML = '<div class="flex justify-center"><span class="loading loading-dots loading-md text-primary"></span></div>';
+            listElem.innerHTML = '<div class="flex justify-center mt-10"><span class="loading loading-dots loading-md text-primary"></span></div>';
             modal_comment.showModal();
 
             const { data: comments } = await supabase.from('comments').select('*').eq('post_id', postId).order('created_at', { ascending: false });
-            listElem.innerHTML = comments.length === 0 ? '<div class="text-center py-10 opacity-50">Belum ada komentar.</div>' : '';
+            listElem.innerHTML = comments.length === 0 ? '<div class="text-center py-10 opacity-50">Belum ada komentar. Jadi yang pertama!</div>' : '';
             comments.forEach(c => {
-                listElem.innerHTML += `<div class="flex gap-3 animate__animated animate__fadeIn"><div class="avatar placeholder"><div class="bg-neutral text-neutral-content rounded-full w-8 h-8"><span class="text-xs">${c.nama.charAt(0).toUpperCase()}</span></div></div><div class="flex flex-col bg-base-100 p-3 rounded-2xl shadow-sm max-w-[80%]"><span class="text-[10px] font-bold text-primary mb-1">${c.nama}</span><p class="text-sm">${c.pesan}</p></div></div>`;
+                listElem.innerHTML += `
+                    <div class="flex gap-3 animate__animated animate__fadeIn">
+                        <div class="avatar placeholder">
+                            <div class="bg-neutral text-neutral-content rounded-full w-8 h-8">
+                                <span class="text-xs">${c.nama.charAt(0).toUpperCase()}</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-col bg-base-100 p-3 rounded-2xl shadow-sm max-w-[80%] border border-base-200">
+                            <span class="text-[10px] font-bold text-primary mb-1">${c.nama}</span>
+                            <p class="text-sm">${c.pesan}</p>
+                        </div>
+                    </div>`;
             });
         };
 
         document.getElementById('btn_send_comment').addEventListener('click', async () => {
+            const btn = document.getElementById('btn_send_comment');
             const postId = document.getElementById('target_post_id').value;
-            const nama = document.getElementById('comment_name').value;
-            const pesan = document.getElementById('comment_text').value;
-            if (!nama || !pesan) return alert("Isi nama & pesan!");
+            const nama = document.getElementById('comment_name').value.trim();
+            const pesan = document.getElementById('comment_text').value.trim();
             
+            if (!nama || !pesan) return alert("Isi nama & pesan dulu ya!");
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading loading-spinner loading-xs"></span> Mengirim...';
+
             const { error } = await supabase.from('comments').insert([{ post_id: postId, nama, pesan }]);
+            
             if (!error) { 
                 document.getElementById('comment_text').value = ''; 
                 await openComment(postId); 
                 loadGallery(); // Refresh UI untuk update angka komentar
+            } else {
+                alert("Gagal mengirim komentar: " + error.message);
             }
+
+            btn.disabled = false;
+            btn.innerHTML = 'Kirim Sekarang';
         });
 
         window.handleLike = async (id, currentLikes) => {
             if (localStorage.getItem(`liked_${id}`)) return;
+            
+            // UI Optimistic Update (biar responsif di klik)
+            const countElem = document.getElementById(`count-${id}`);
+            const btnElem = document.getElementById(`btn-like-${id}`);
+            
+            countElem.innerText = currentLikes + 1;
+            btnElem.classList.add('text-error', 'font-bold');
+            btnElem.querySelector('svg').setAttribute('fill', 'currentColor');
+            localStorage.setItem(`liked_${id}`, 'true');
+
+            // Update ke DB
             const { error } = await supabase.from('posts').update({ likes: currentLikes + 1 }).eq('id', id);
-            if (!error) {
-                localStorage.setItem(`liked_${id}`, 'true');
-                document.getElementById(`count-${id}`).innerText = currentLikes + 1;
-                document.getElementById(`btn-like-${id}`).classList.add('text-error', 'font-bold');
+            
+            if (error) {
+                // Kalo gagal, revert UI nya
+                countElem.innerText = currentLikes;
+                btnElem.classList.remove('text-error', 'font-bold');
+                btnElem.querySelector('svg').setAttribute('fill', 'none');
+                localStorage.removeItem(`liked_${id}`);
+                console.error("Gagal like:", error.message);
             }
         };
 
         loadGallery();
-                // --- COUNT UP TIMER HUBUNGAN ---
+
+        // --- COUNT UP TIMER HUBUNGAN ---
         function runRelationshipTimer() {
-            // Ubah tahun '2026' di bawah kalau kalian jadian di tahun sebelumnya
             const startDate = new Date('2026-04-04T02:46:00').getTime();
             
             setInterval(() => {
                 const now = new Date().getTime();
                 const difference = now - startDate;
                 
-                // Kalau tanggal belum lewat, biarin 0
                 if (difference < 0) return;
                 
                 const days = Math.floor(difference / (1000 * 60 * 60 * 24));
@@ -244,7 +290,6 @@
                 const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((difference % (1000 * 60)) / 1000);
                 
-                // Update UI DaisyUI Countdown
                 document.getElementById('count-days').style.setProperty('--value', days);
                 document.getElementById('count-hours').style.setProperty('--value', hours);
                 document.getElementById('count-minutes').style.setProperty('--value', minutes);
@@ -252,7 +297,6 @@
             }, 1000);
         }
         
-        // Jalankan timer
         runRelationshipTimer();
     </script>
 </body>
