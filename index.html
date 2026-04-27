@@ -113,7 +113,7 @@
       </aside>
     </footer>
 
-    <script type="module">
+        <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
         const supabaseUrl = 'https://ouzvbeudwmzhnwcgrqah.supabase.co';
@@ -144,76 +144,95 @@
 
         // --- FETCH DATA ---
         async function loadGallery() {
-            // Memanggil post sekaligus ID komentar untuk dihitung
             const { data: posts, error } = await supabase.from('posts').select('*, comments(id)').order('created_at', { ascending: false });
+            
             if (error) {
                 console.error("Gagal memuat galeri:", error.message);
+                galleryContainer.innerHTML = `<div class="col-span-full text-center py-10 text-error font-bold">Gagal memuat galeri: ${error.message}</div>`;
                 return;
             }
             renderGallery(posts);
         }
 
         function renderGallery(posts) {
-    galleryContainer.innerHTML = '';
-    posts.forEach(post => {
-        const isLiked = localStorage.getItem(`liked_${post.id}`);
-        const commentCount = post.comments ? post.comments.length : 0;
-        
-        // Logic Tanggal: Prioritaskan event_date
-        const rawDate = post.tanggal ? post.tanggal : post.created_at;
-        const tglTampil = new Date(rawDate).toLocaleDateString('id-ID', { 
-            day: 'numeric', 
-            month: 'long', 
-            year: 'numeric' 
-        });
+            galleryContainer.innerHTML = '';
+            
+            if (!posts || posts.length === 0) {
+                galleryContainer.innerHTML = '<div class="col-span-full text-center py-10 opacity-50">Belum ada momen yang dibagikan.</div>';
+                return;
+            }
 
-        let urls = [];
-        try {
-            urls = typeof post.image_url === 'string' ? JSON.parse(post.image_url) : post.image_url;
-        } catch (e) {
-            urls = [post.image_url];
-        }
+            posts.forEach(post => {
+                const isLiked = localStorage.getItem(`liked_${post.id}`);
+                const commentCount = post.comments ? post.comments.length : 0;
+                
+                // Logic Tanggal: Prioritaskan event_date
+                const rawDate = post.tanggal ? post.tanggal : post.created_at;
+                const tglTampil = new Date(rawDate).toLocaleDateString('id-ID', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric' 
+                });
 
-        let mediaHtml = '';
-        if (Array.isArray(urls) && urls.length > 1) {
-            let carouselItems = '';
-            urls.forEach((url, index) => {
-                carouselItems += `
-                    <div id="slide-${post.id}-${index}" class="carousel-item relative w-full">
-                        <img src="${url}" class="w-full object-cover aspect-square" />
-                        <div class="absolute top-2 right-2 badge badge-neutral bg-black/50 border-none text-white text-[10px]">
-                            ${index + 1}/${urls.length}
+                // LOGIC PARSING GAMBAR YANG DIPERBAIKI (ANTI-ERROR)
+                let urls = [];
+                if (!post.image_url) {
+                    urls = ['https://placehold.co/600x400/eeeeee/999999?text=Tidak+Ada+Gambar'];
+                } else if (typeof post.image_url === 'string') {
+                    try {
+                        // Hanya parse JSON jika stringnya terlihat seperti array "["
+                        urls = post.image_url.trim().startsWith('[') ? JSON.parse(post.image_url) : [post.image_url];
+                    } catch (e) {
+                        urls = [post.image_url];
+                    }
+                } else if (Array.isArray(post.image_url)) {
+                    urls = post.image_url;
+                } else {
+                    urls = [post.image_url];
+                }
+
+                let mediaHtml = '';
+                if (urls.length > 1) {
+                    let carouselItems = '';
+                    urls.forEach((url, index) => {
+                        // Tambahkan atribut onerror agar gambar default muncul jika link mati
+                        carouselItems += `
+                            <div id="slide-${post.id}-${index}" class="carousel-item relative w-full">
+                                <img src="${url}" class="w-full object-cover aspect-square" onerror="this.src='https://placehold.co/600x400/ffeeee/ff0000?text=Gambar+Rusak'" />
+                                <div class="absolute top-2 right-2 badge badge-neutral bg-black/50 border-none text-white text-[10px]">
+                                    ${index + 1}/${urls.length}
+                                </div>
+                            </div>`;
+                    });
+                    mediaHtml = `<div class="carousel w-full rounded-t-2xl shadow-inner overflow-x-scroll snap-x snap-mandatory">${carouselItems}</div>`;
+                } else {
+                    const singleUrl = urls[0];
+                    mediaHtml = `<img src="${singleUrl}" class="w-full rounded-t-2xl" onerror="this.src='https://placehold.co/600x400/ffeeee/ff0000?text=Gambar+Rusak'" />`;
+                }
+
+                galleryContainer.innerHTML += `
+                    <div class="border border-info/30 break-inside-avoid mb-6 card bg-base-100 shadow-xl overflow-hidden animate__animated animate__fadeInUp">
+                        <figure class="bg-base-300 m-0">${mediaHtml}</figure>
+                        <div class="card-body bg-white p-4">
+                            <p class="text-sm italic opacity-90">"${post.caption || ''}"</p>
+                            <div class="card-actions justify-between items-center mt-4 border-t pt-3">
+                                <div class="flex gap-4">
+                                    <button onclick="handleLike(${post.id}, ${post.likes || 0})" id="btn-like-${post.id}" class="flex items-center gap-1 hover:text-error transition-colors ${isLiked ? 'text-error font-bold' : ''}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="${isLiked ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                                        <span id="count-${post.id}" class="text-xs font-medium">${post.likes || 0}</span>
+                                    </button>
+                                    <button onclick="openComment(${post.id})" class="flex items-center gap-1 hover:text-info transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                                        <span class="text-xs font-medium">${commentCount}</span>
+                                    </button>
+                                </div>
+                                <span class="text-[10px] opacity-40 font-semibold text-dark">${tglTampil}</span>
+                            </div>
                         </div>
                     </div>`;
             });
-            mediaHtml = `<div class="carousel w-full rounded-t-2xl shadow-inner overflow-x-scroll snap-x snap-mandatory">${carouselItems}</div>`;
-        } else {
-            const singleUrl = Array.isArray(urls) ? urls[0] : post.image_url;
-            mediaHtml = `<img src="${singleUrl}" class="w-full rounded-t-2xl" />`;
         }
 
-        galleryContainer.innerHTML += `
-            <div class="border border-info/30 break-inside-avoid mb-6 card bg-base-100 shadow-xl overflow-hidden animate__animated animate__fadeInUp">
-                <figure class="bg-base-300">${mediaHtml}</figure>
-                <div class="card-body bg-white p-4">
-                    <p class="text-sm italic opacity-90">"${post.caption}"</p>
-                    <div class="card-actions justify-between items-center mt-4 border-t pt-3">
-                        <div class="flex gap-4">
-                            <button onclick="handleLike(${post.id}, ${post.likes || 0})" id="btn-like-${post.id}" class="flex items-center gap-1 hover:text-error transition-colors ${isLiked ? 'text-error font-bold' : ''}">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="${isLiked ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                                <span id="count-${post.id}" class="text-xs font-medium">${post.likes || 0}</span>
-                            </button>
-                            <button onclick="openComment(${post.id})" class="flex items-center gap-1 hover:text-info transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                                <span class="text-xs font-medium">${commentCount}</span>
-                            </button>
-                        </div>
-                        <span class="text-[10px] opacity-40 font-semibold text-dark">${tglTampil}</span>
-                    </div>
-                </div>
-            </div>`;
-    });
-}
         // --- KOMENTAR & LIKE ---
         window.openComment = async (postId) => {
             document.getElementById('target_post_id').value = postId;
@@ -268,7 +287,6 @@
         window.handleLike = async (id, currentLikes) => {
             if (localStorage.getItem(`liked_${id}`)) return;
             
-            // UI Optimistic Update (biar responsif di klik)
             const countElem = document.getElementById(`count-${id}`);
             const btnElem = document.getElementById(`btn-like-${id}`);
             
@@ -277,11 +295,9 @@
             btnElem.querySelector('svg').setAttribute('fill', 'currentColor');
             localStorage.setItem(`liked_${id}`, 'true');
 
-            // Update ke DB
             const { error } = await supabase.from('posts').update({ likes: currentLikes + 1 }).eq('id', id);
             
             if (error) {
-                // Kalo gagal, revert UI nya
                 countElem.innerText = currentLikes;
                 btnElem.classList.remove('text-error', 'font-bold');
                 btnElem.querySelector('svg').setAttribute('fill', 'none');
