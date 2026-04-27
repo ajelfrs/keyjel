@@ -25,8 +25,8 @@
                 <h2 class="card-title mb-4">Upload Momen Baru</h2>
                 <form id="uploadForm" class="space-y-4">
                     <div class="form-control">
-                        <label class="label"><span class="label-text">Pilih Foto</span></label>
-                        <input type="file" id="fileInput" class="file-input file-input-bordered file-input-secondary w-full" accept="image/*" required />
+                        <label class="label"><span class="label-text">Pilih Foto / Video (Bisa pilih banyak)</span></label>
+                        <input type="file" id="fileInput" class="file-input file-input-bordered file-input-secondary w-full" accept="image/*,video/*" multiple required />
                     </div>
                     <div class="form-control">
                         <label class="label"><span class="label-text">Caption / Cerita</span></label>
@@ -56,15 +56,14 @@
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
     // Config Firebase
-    const firebaseConfig = { /* config firebase lu */
-    apiKey: "AIzaSyAIImmquRs6nQ3dlY9EF-9oodVi53eoB0A",
+    const firebaseConfig = { 
+            apiKey: "AIzaSyAIImmquRs6nQ3dlY9EF-9oodVi53eoB0A",
             authDomain: "keyjell.firebaseapp.com",
             projectId: "keyjell",
             storageBucket: "keyjell.firebasestorage.app",
             messagingSenderId: "453410649070",
             appId: "1:453410649070:web:58a3c49253c210e512d4ff",
             measurementId: "G-G68Y8F6X3R"
-        
     };
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -79,133 +78,157 @@
         if (!user) window.location.href = "../login";
     });
 
-    // --- LOGIC UPLOAD KE SUPABASE ---
+    // --- LOGIC UPLOAD KE SUPABASE (MULTIPLE) ---
     const uploadForm = document.getElementById('uploadForm');
     
     uploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const file = document.getElementById('fileInput').files[0];
+        const files = document.getElementById('fileInput').files;
         const caption = document.getElementById('captionInput').value;
         const submitBtn = document.getElementById('submitBtn');
 
-        if(!file) return;
+        if(files.length === 0) return;
+        
         submitBtn.disabled = true;
+        submitBtn.innerText = `Mengupload ${files.length} file...`;
 
-        // 1. Upload Gambar ke Supabase Storage
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const filePath = `gallery/${fileName}`;
+        try {
+            const uploadedPosts = [];
 
-        const { data: storageData, error: storageError } = await supabase.storage
-            .from('gallery')
-            .upload(filePath, file);
+            // Looping untuk semua file yang dipilih
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileExt = file.name.split('.').pop();
+                // Tambah random string biar ga bentrok kalau uploadnya barengan di milidetik yg sama
+                const randomStr = Math.random().toString(36).substring(2, 8); 
+                const fileName = `${Date.now()}-${randomStr}.${fileExt}`;
+                const filePath = `gallery/${fileName}`;
 
-        if (storageError) {
-            alert("Gagal upload gambar: " + storageError.message);
+                // 1. Upload Gambar/Video ke Supabase Storage
+                const { data: storageData, error: storageError } = await supabase.storage
+                    .from('gallery')
+                    .upload(filePath, file);
+
+                if (storageError) {
+                    alert(`Gagal upload file ${file.name}: ` + storageError.message);
+                    continue; // Kalo satu gagal, lanjut ke file berikutnya
+                }
+
+                // 2. Ambil Public URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('gallery')
+                    .getPublicUrl(filePath);
+
+                // Masukin data ke array untuk di-insert sekaligus nanti
+                uploadedPosts.push({
+                    image_url: publicUrl, 
+                    image_path: filePath, 
+                    caption: caption 
+                });
+            }
+
+            // 3. Simpan Metadata ke Tabel 'posts' secara massal (bulk insert)
+            if (uploadedPosts.length > 0) {
+                const { error: dbError } = await supabase
+                    .from('posts')
+                    .insert(uploadedPosts);
+
+                if (dbError) {
+                    alert("Gagal simpan data ke database: " + dbError.message);
+                } else {
+                    alert(`${uploadedPosts.length} Momen berhasil diabadikan!`);
+                    uploadForm.reset();
+                    loadAdminPosts(); // Refresh list otomatis setelah upload
+                }
+            } else {
+                alert("Tidak ada file yang berhasil diupload.");
+            }
+
+        } catch (err) {
+            console.error(err);
+            alert("Terjadi kesalahan saat mengupload momen.");
+        } finally {
+            // Kembalikan kondisi tombol
             submitBtn.disabled = false;
-            return;
+            submitBtn.innerText = "Upload Postingan";
         }
-
-        // 2. Ambil Public URL
-        const { data: { publicUrl } } = supabase.storage
-            .from('gallery')
-            .getPublicUrl(filePath);
-
-        // 3. Simpan Metadata ke Tabel 'posts'
-        const { error: dbError } = await supabase
-            .from('posts')
-            .insert([{ 
-                image_url: publicUrl, 
-                image_path: filePath, 
-                caption: caption 
-            }]);
-
-        if (dbError) {
-            alert("Gagal simpan data: " + dbError.message);
-        } else {
-            alert("Momen berhasil diabadikan!");
-            uploadForm.reset();
-        }
-        submitBtn.disabled = false;
     });
     
     // --- BAGIAN FETCH & TAMPILIN POSTINGAN DI ADMIN ---
-const postsList = document.getElementById('postsList');
+    const postsList = document.getElementById('postsList');
 
-async function loadAdminPosts() {
-    // Ambil data dari Supabase
-    const { data: posts, error } = await supabase
-        .from('posts')
-        .select('*')
-        .order('created_at', { ascending: false });
+    async function loadAdminPosts() {
+        // Ambil data dari Supabase
+        const { data: posts, error } = await supabase
+            .from('posts')
+            .select('*')
+            .order('created_at', { ascending: false });
 
-    if (error) {
-        console.error("Gagal ambil data:", error.message);
-        return;
-    }
+        if (error) {
+            console.error("Gagal ambil data:", error.message);
+            return;
+        }
 
-    postsList.innerHTML = "";
-    document.getElementById('postCount').innerText = posts.length;
+        postsList.innerHTML = "";
+        document.getElementById('postCount').innerText = posts.length;
 
-    posts.forEach((post) => {
-        // Cek apakah file itu video atau foto buat thumbnail-nya
-        const isVideo = post.image_url.match(/\.(mp4|webm|ogg|mov)$/i);
-        const mediaPreview = isVideo 
-            ? `<video src="${post.image_url}" class="h-20 w-20 object-cover rounded"></video>`
-            : `<img src="${post.image_url}" class="h-20 w-20 object-cover rounded" />`;
+        posts.forEach((post) => {
+            // Cek apakah file itu video atau foto buat thumbnail-nya
+            const isVideo = post.image_url.match(/\.(mp4|webm|ogg|mov)$/i);
+            const mediaPreview = isVideo 
+                ? `<video src="${post.image_url}" class="h-20 w-20 object-cover rounded"></video>`
+                : `<img src="${post.image_url}" class="h-20 w-20 object-cover rounded" />`;
 
-        const card = `
-            <div class="card card-side bg-base-100 shadow-sm border border-base-200 p-2 items-center gap-4">
-                <figure class="flex-none">
-                    ${mediaPreview}
-                </figure>
-                <div class="flex-1 overflow-hidden">
-                    <p class="text-xs italic truncate">"${post.caption}"</p>
-                    <div class="card-actions justify-end mt-2">
-                        <button onclick="deletePost(${post.id}, '${post.image_path}')" 
-                                class="btn btn-error btn-xs btn-outline">
-                            Hapus
-                        </button>
+            const card = `
+                <div class="card card-side bg-base-100 shadow-sm border border-base-200 p-2 items-center gap-4">
+                    <figure class="flex-none">
+                        ${mediaPreview}
+                    </figure>
+                    <div class="flex-1 overflow-hidden">
+                        <p class="text-xs italic truncate">"${post.caption}"</p>
+                        <div class="card-actions justify-end mt-2">
+                            <button onclick="deletePost(${post.id}, '${post.image_path}')" 
+                                    class="btn btn-error btn-xs btn-outline">
+                                Hapus
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
-        postsList.innerHTML += card;
-    });
-}
-
-// --- FUNGSI HAPUS ---
-window.deletePost = async (id, imagePath) => {
-    if (confirm("Yakin mau hapus momen ini?")) {
-        try {
-            // 1. Hapus dari Database
-            const { error: dbError } = await supabase
-                .from('posts')
-                .delete()
-                .eq('id', id);
-
-            if (dbError) throw dbError;
-
-            // 2. Hapus file dari Storage
-            const { error: storageError } = await supabase.storage
-                .from('gallery')
-                .remove([imagePath]);
-
-            if (storageError) console.warn("File di storage gagal dihapus, tapi data tabel sukses.");
-
-            alert("Momen berhasil dihapus!");
-            loadAdminPosts(); // Refresh list
-        } catch (err) {
-            alert("Gagal hapus: " + err.message);
-        }
+            `;
+            postsList.innerHTML += card;
+        });
     }
-};
 
-// Jalankan fungsi load saat halaman siap
-loadAdminPosts();
+    // --- FUNGSI HAPUS ---
+    window.deletePost = async (id, imagePath) => {
+        if (confirm("Yakin mau hapus momen ini?")) {
+            try {
+                // 1. Hapus dari Database
+                const { error: dbError } = await supabase
+                    .from('posts')
+                    .delete()
+                    .eq('id', id);
 
-    // --- LOGIC FETCH & DELETE ---
-    // (Gunakan supabase.from('posts').select('*') dan supabase.from('posts').delete())
+                if (dbError) throw dbError;
+
+                // 2. Hapus file dari Storage
+                const { error: storageError } = await supabase.storage
+                    .from('gallery')
+                    .remove([imagePath]);
+
+                if (storageError) console.warn("File di storage gagal dihapus, tapi data tabel sukses.");
+
+                alert("Momen berhasil dihapus!");
+                loadAdminPosts(); // Refresh list
+            } catch (err) {
+                alert("Gagal hapus: " + err.message);
+            }
+        }
+    };
+
+    // Jalankan fungsi load saat halaman siap
+    loadAdminPosts();
+
 </script>
 
 </body>
