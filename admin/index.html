@@ -46,7 +46,7 @@
         </div>
     </div>
 
-            <script type="module">
+                <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
@@ -143,7 +143,7 @@
             const postsList = document.getElementById('postsList');
             
             if (error) {
-                postsList.innerHTML = `<div class="text-error">Gagal memuat: ${error.message}</div>`;
+                postsList.innerHTML = `<div class="text-error p-4 font-bold text-center">Gagal memuat: ${error.message}</div>`;
                 return;
             }
 
@@ -151,7 +151,8 @@
             document.getElementById('postCount').innerText = posts ? posts.length : 0;
 
             if (!posts || posts.length === 0) {
-                postsList.innerHTML = "<div class="col-span-full opacity-50">Belum ada postingan.</div>";
+                // FIXED: Penggunaan tanda kutip yang benar (single quotes di luar, double di dalam)
+                postsList.innerHTML = '<div class="col-span-full opacity-50 text-center py-10 font-bold">Belum ada postingan.</div>';
                 return;
             }
 
@@ -177,16 +178,19 @@
                 // Encode URLs untuk dikirim ke fungsi delete lewat HTML
                 const encodedUrls = encodeURIComponent(JSON.stringify(urls));
                 
+                // FIXED: Pastikan escape string caption aman jika ada tanda kutip di dalamnya
+                const safeCaption = (post.caption || 'Tanpa caption').replace(/"/g, '&quot;');
+                
                 postsList.innerHTML += `
                     <div class="card card-side bg-base-100 shadow-sm border p-2 items-center gap-4 animate__animated animate__fadeIn">
-                        <figure class="w-20 h-20 flex-none bg-base-300 rounded overflow-hidden">
+                        <figure class="w-20 h-20 flex-none bg-base-300 rounded overflow-hidden relative">
                             ${isVideo 
-                                ? '<div class="text-xs p-2 font-bold text-center mt-6">VIDEO</div>' 
+                                ? '<div class="text-xs p-2 font-bold text-center mt-6 w-full">VIDEO</div>' 
                                 : `<img src="${firstMediaUrl}" class="object-cover h-full w-full" onerror="this.src='https://placehold.co/100x100/ffeeee/ff0000?text=Error'" />`}
                         </figure>
                         <div class="flex-1 overflow-hidden">
                             <p class="text-xs font-bold text-primary">${urls.length} Media</p>
-                            <p class="text-sm italic truncate">"${post.caption || 'Tanpa caption'}"</p>
+                            <p class="text-sm italic truncate">"${safeCaption}"</p>
                             <div class="card-actions justify-end mt-2">
                                 <button onclick="deletePost(${post.id}, '${encodedUrls}')" class="btn btn-error btn-xs btn-outline">Hapus</button>
                             </div>
@@ -226,6 +230,8 @@
 
         // Inisiasi awal
         loadAdminPosts();
-    </script>
+                </script>
 </body>
 </html>
+                                                  </script>
+                                                  
