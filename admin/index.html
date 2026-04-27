@@ -19,217 +19,145 @@
     </div>
 
     <div class="max-w-4xl mx-auto mt-8 px-4">
-        
         <div class="card bg-base-100 shadow-xl mb-10">
             <div class="card-body">
-                <h2 class="card-title mb-4">Upload Momen Baru</h2>
+                <h2 class="card-title mb-4">Upload Postingan Baru (Carousel)</h2>
                 <form id="uploadForm" class="space-y-4">
                     <div class="form-control">
-                        <label class="label"><span class="label-text">Pilih Foto / Video (Bisa pilih banyak)</span></label>
+                        <label class="label"><span class="label-text">Pilih Foto/Video (Bisa banyak sekaligus)</span></label>
                         <input type="file" id="fileInput" class="file-input file-input-bordered file-input-secondary w-full" accept="image/*,video/*" multiple required />
                     </div>
                     <div class="form-control">
-                        <label class="label"><span class="label-text">Caption / Cerita</span></label>
-                        <textarea id="captionInput" class="textarea textarea-bordered h-24" placeholder="Tulis momen indah di sini..." required></textarea>
+                        <label class="label"><span class="label-text">Caption Postingan</span></label>
+                        <textarea id="captionInput" class="textarea textarea-bordered h-24" placeholder="Tulis cerita di sini..." required></textarea>
                     </div>
                     <button type="submit" id="submitBtn" class="btn btn-secondary w-full text-white">Upload Postingan</button>
                 </form>
-                <progress id="uploadProgress" class="progress progress-primary w-full mt-4 hidden" value="0" max="100"></progress>
+                <div id="statusUpload" class="hidden mt-4 text-center text-sm font-bold text-primary"></div>
             </div>
         </div>
 
         <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
-            Daftar Momen <div class="badge badge-secondary" id="postCount">0</div>
+            Daftar Postingan <div class="badge badge-secondary" id="postCount">0</div>
         </h2>
         
         <div id="postsList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="skeleton w-full h-32"></div>
-            <div class="skeleton w-full h-32"></div>
         </div>
-
     </div>
 
     <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    // Import Supabase
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-    // Config Firebase
-    const firebaseConfig = { 
+        const firebaseConfig = { 
             apiKey: "AIzaSyAIImmquRs6nQ3dlY9EF-9oodVi53eoB0A",
             authDomain: "keyjell.firebaseapp.com",
             projectId: "keyjell",
             storageBucket: "keyjell.firebasestorage.app",
             messagingSenderId: "453410649070",
-            appId: "1:453410649070:web:58a3c49253c210e512d4ff",
-            measurementId: "G-G68Y8F6X3R"
-    };
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
+            appId: "1:453410649070:web:58a3c49253c210e512d4ff"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
 
-    // Config Supabase
-    const supabaseUrl = 'https://ouzvbeudwmzhnwcgrqah.supabase.co';
-    const supabaseKey = 'sb_publishable_z6NTv-MfTdrZTlDrltVKxw_nKMwthLG';
-    const supabase = createClient(supabaseUrl, supabaseKey);
+        const supabaseUrl = 'https://ouzvbeudwmzhnwcgrqah.supabase.co';
+        const supabaseKey = 'sb_publishable_z6NTv-MfTdrZTlDrltVKxw_nKMwthLG';
+        const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Proteksi Halaman
-    onAuthStateChanged(auth, (user) => {
-        if (!user) window.location.href = "../login";
-    });
-
-    // --- LOGIC UPLOAD KE SUPABASE (MULTIPLE) ---
-    const uploadForm = document.getElementById('uploadForm');
-    
-    uploadForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const files = document.getElementById('fileInput').files;
-        const caption = document.getElementById('captionInput').value;
-        const submitBtn = document.getElementById('submitBtn');
-
-        if(files.length === 0) return;
-        
-        submitBtn.disabled = true;
-        submitBtn.innerText = `Mengupload ${files.length} file...`;
-
-        try {
-            const uploadedPosts = [];
-
-            // Looping untuk semua file yang dipilih
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const fileExt = file.name.split('.').pop();
-                // Tambah random string biar ga bentrok kalau uploadnya barengan di milidetik yg sama
-                const randomStr = Math.random().toString(36).substring(2, 8); 
-                const fileName = `${Date.now()}-${randomStr}.${fileExt}`;
-                const filePath = `gallery/${fileName}`;
-
-                // 1. Upload Gambar/Video ke Supabase Storage
-                const { data: storageData, error: storageError } = await supabase.storage
-                    .from('gallery')
-                    .upload(filePath, file);
-
-                if (storageError) {
-                    alert(`Gagal upload file ${file.name}: ` + storageError.message);
-                    continue; // Kalo satu gagal, lanjut ke file berikutnya
-                }
-
-                // 2. Ambil Public URL
-                const { data: { publicUrl } } = supabase.storage
-                    .from('gallery')
-                    .getPublicUrl(filePath);
-
-                // Masukin data ke array untuk di-insert sekaligus nanti
-                uploadedPosts.push({
-                    image_url: publicUrl, 
-                    image_path: filePath, 
-                    caption: caption 
-                });
-            }
-
-            // 3. Simpan Metadata ke Tabel 'posts' secara massal (bulk insert)
-            if (uploadedPosts.length > 0) {
-                const { error: dbError } = await supabase
-                    .from('posts')
-                    .insert(uploadedPosts);
-
-                if (dbError) {
-                    alert("Gagal simpan data ke database: " + dbError.message);
-                } else {
-                    alert(`${uploadedPosts.length} Momen berhasil diabadikan!`);
-                    uploadForm.reset();
-                    loadAdminPosts(); // Refresh list otomatis setelah upload
-                }
-            } else {
-                alert("Tidak ada file yang berhasil diupload.");
-            }
-
-        } catch (err) {
-            console.error(err);
-            alert("Terjadi kesalahan saat mengupload momen.");
-        } finally {
-            // Kembalikan kondisi tombol
-            submitBtn.disabled = false;
-            submitBtn.innerText = "Upload Postingan";
-        }
-    });
-    
-    // --- BAGIAN FETCH & TAMPILIN POSTINGAN DI ADMIN ---
-    const postsList = document.getElementById('postsList');
-
-    async function loadAdminPosts() {
-        // Ambil data dari Supabase
-        const { data: posts, error } = await supabase
-            .from('posts')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error("Gagal ambil data:", error.message);
-            return;
-        }
-
-        postsList.innerHTML = "";
-        document.getElementById('postCount').innerText = posts.length;
-
-        posts.forEach((post) => {
-            // Cek apakah file itu video atau foto buat thumbnail-nya
-            const isVideo = post.image_url.match(/\.(mp4|webm|ogg|mov)$/i);
-            const mediaPreview = isVideo 
-                ? `<video src="${post.image_url}" class="h-20 w-20 object-cover rounded"></video>`
-                : `<img src="${post.image_url}" class="h-20 w-20 object-cover rounded" />`;
-
-            const card = `
-                <div class="card card-side bg-base-100 shadow-sm border border-base-200 p-2 items-center gap-4">
-                    <figure class="flex-none">
-                        ${mediaPreview}
-                    </figure>
-                    <div class="flex-1 overflow-hidden">
-                        <p class="text-xs italic truncate">"${post.caption}"</p>
-                        <div class="card-actions justify-end mt-2">
-                            <button onclick="deletePost(${post.id}, '${post.image_path}')" 
-                                    class="btn btn-error btn-xs btn-outline">
-                                Hapus
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            postsList.innerHTML += card;
+        onAuthStateChanged(auth, (user) => {
+            if (!user) window.location.href = "../login";
         });
-    }
 
-    // --- FUNGSI HAPUS ---
-    window.deletePost = async (id, imagePath) => {
-        if (confirm("Yakin mau hapus momen ini?")) {
+        const uploadForm = document.getElementById('uploadForm');
+        const statusUpload = document.getElementById('statusUpload');
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const files = document.getElementById('fileInput').files;
+            const caption = document.getElementById('captionInput').value;
+            const submitBtn = document.getElementById('submitBtn');
+
+            if(files.length === 0) return;
+            
+            submitBtn.disabled = true;
+            statusUpload.classList.remove('hidden');
+            
+            const media_urls = [];
+
             try {
-                // 1. Hapus dari Database
+                for (let i = 0; i < files.length; i++) {
+                    statusUpload.innerText = `Mengupload file ${i+1} dari ${files.length}...`;
+                    const file = files[i];
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                    const filePath = `gallery/${fileName}`;
+
+                    const { error: storageError } = await supabase.storage
+                        .from('gallery')
+                        .upload(filePath, file);
+
+                    if (storageError) throw storageError;
+
+                    const { data: { publicUrl } } = supabase.storage.from('gallery').getPublicUrl(filePath);
+                    media_urls.push({ url: publicUrl, path: filePath });
+                }
+
                 const { error: dbError } = await supabase
                     .from('posts')
-                    .delete()
-                    .eq('id', id);
+                    .insert([{ caption, media_urls, likes: 0 }]);
 
                 if (dbError) throw dbError;
 
-                // 2. Hapus file dari Storage
-                const { error: storageError } = await supabase.storage
-                    .from('gallery')
-                    .remove([imagePath]);
-
-                if (storageError) console.warn("File di storage gagal dihapus, tapi data tabel sukses.");
-
-                alert("Momen berhasil dihapus!");
-                loadAdminPosts(); // Refresh list
+                alert("Postingan berhasil diupload!");
+                uploadForm.reset();
+                loadAdminPosts();
             } catch (err) {
-                alert("Gagal hapus: " + err.message);
+                alert("Gagal: " + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                statusUpload.classList.add('hidden');
             }
+        });
+
+        async function loadAdminPosts() {
+            const { data: posts, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+            const postsList = document.getElementById('postsList');
+            if (error) return;
+
+            postsList.innerHTML = "";
+            document.getElementById('postCount').innerText = posts.length;
+
+            posts.forEach((post) => {
+                const firstMedia = post.media_urls[0];
+                const isVideo = firstMedia?.url.match(/\.(mp4|webm|mov)$/i);
+                
+                postsList.innerHTML += `
+                    <div class="card card-side bg-base-100 shadow-sm border p-2 items-center gap-4">
+                        <figure class="w-20 h-20 flex-none bg-base-300 rounded overflow-hidden">
+                            ${isVideo ? '<div class="text-xs p-2">Video</div>' : `<img src="${firstMedia?.url}" class="object-cover h-full w-full" />`}
+                        </figure>
+                        <div class="flex-1 overflow-hidden">
+                            <p class="text-xs font-bold">${post.media_urls.length} Media</p>
+                            <p class="text-[10px] italic truncate">"${post.caption}"</p>
+                            <div class="card-actions justify-end mt-2">
+                                <button onclick="deletePost(${post.id}, ${JSON.stringify(post.media_urls.map(m => m.path))})" 
+                                        class="btn btn-error btn-xs btn-outline">Hapus</button>
+                            </div>
+                        </div>
+                    </div>`;
+            });
         }
-    };
 
-    // Jalankan fungsi load saat halaman siap
-    loadAdminPosts();
+        window.deletePost = async (id, paths) => {
+            if (!confirm("Hapus postingan ini?")) return;
+            await supabase.from('posts').delete().eq('id', id);
+            await supabase.storage.from('gallery').remove(paths);
+            loadAdminPosts();
+        };
 
-</script>
-
+        loadAdminPosts();
+    </script>
 </body>
 </html>
