@@ -46,7 +46,7 @@
         </div>
     </div>
 
-    <script type="module">
+        <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
@@ -66,13 +66,20 @@
         const supabaseKey = 'sb_publishable_z6NTv-MfTdrZTlDrltVKxw_nKMwthLG';
         const supabase = createClient(supabaseUrl, supabaseKey);
 
+        // Cek login admin
         onAuthStateChanged(auth, (user) => {
             if (!user) window.location.href = "../login";
+        });
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            auth.signOut();
         });
 
         const uploadForm = document.getElementById('uploadForm');
         const statusUpload = document.getElementById('statusUpload');
 
+        // --- FUNGSI UPLOAD ---
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const files = document.getElementById('fileInput').files;
@@ -84,7 +91,7 @@
             submitBtn.disabled = true;
             statusUpload.classList.remove('hidden');
             
-            const media_urls = [];
+            const urls = [];
 
             try {
                 for (let i = 0; i < files.length; i++) {
@@ -94,19 +101,26 @@
                     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
                     const filePath = `gallery/${fileName}`;
 
+                    // Upload ke Storage
                     const { error: storageError } = await supabase.storage
                         .from('gallery')
                         .upload(filePath, file);
 
                     if (storageError) throw storageError;
 
+                    // Dapatkan URL Publik
                     const { data: { publicUrl } } = supabase.storage.from('gallery').getPublicUrl(filePath);
-                    media_urls.push({ url: publicUrl, path: filePath });
+                    urls.push(publicUrl);
                 }
 
+                // Insert ke DB (Gunakan image_url agar sinkron dengan public page)
                 const { error: dbError } = await supabase
                     .from('posts')
-                    .insert([{ caption, media_urls, likes: 0 }]);
+                    .insert([{ 
+                        caption: caption, 
+                        image_url: JSON.stringify(urls), // Jadikan format JSON String
+                        likes: 0 
+                    }]);
 
                 if (dbError) throw dbError;
 
@@ -114,49 +128,103 @@
                 uploadForm.reset();
                 loadAdminPosts();
             } catch (err) {
+                console.error("Upload error:", err);
                 alert("Gagal: " + err.message);
             } finally {
                 submitBtn.disabled = false;
                 statusUpload.classList.add('hidden');
+                statusUpload.innerText = '';
             }
         });
 
+        // --- FUNGSI LOAD POSTINGAN ---
         async function loadAdminPosts() {
             const { data: posts, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
             const postsList = document.getElementById('postsList');
-            if (error) return;
+            
+            if (error) {
+                postsList.innerHTML = `<div class="text-error">Gagal memuat: ${error.message}</div>`;
+                return;
+            }
 
             postsList.innerHTML = "";
-            document.getElementById('postCount').innerText = posts.length;
+            document.getElementById('postCount').innerText = posts ? posts.length : 0;
+
+            if (!posts || posts.length === 0) {
+                postsList.innerHTML = "<div class="col-span-full opacity-50">Belum ada postingan.</div>";
+                return;
+            }
 
             posts.forEach((post) => {
-                const firstMedia = post.media_urls[0];
-                const isVideo = firstMedia?.url.match(/\.(mp4|webm|mov)$/i);
+                let urls = [];
+                
+                // Ekstrak URL dengan aman (mendukung format lama dan baru)
+                if (post.image_url) {
+                    try {
+                        urls = typeof post.image_url === 'string' && post.image_url.startsWith('[') 
+                            ? JSON.parse(post.image_url) 
+                            : [post.image_url];
+                    } catch (e) {
+                        urls = [post.image_url];
+                    }
+                } else if (post.media_urls) {
+                    urls = post.media_urls.map(m => m.url || m);
+                }
+
+                const firstMediaUrl = urls.length > 0 ? urls[0] : 'https://placehold.co/100x100/eeeeee/999999?text=Error';
+                const isVideo = firstMediaUrl && typeof firstMediaUrl === 'string' && firstMediaUrl.match(/\.(mp4|webm|mov)$/i);
+                
+                // Encode URLs untuk dikirim ke fungsi delete lewat HTML
+                const encodedUrls = encodeURIComponent(JSON.stringify(urls));
                 
                 postsList.innerHTML += `
-                    <div class="card card-side bg-base-100 shadow-sm border p-2 items-center gap-4">
+                    <div class="card card-side bg-base-100 shadow-sm border p-2 items-center gap-4 animate__animated animate__fadeIn">
                         <figure class="w-20 h-20 flex-none bg-base-300 rounded overflow-hidden">
-                            ${isVideo ? '<div class="text-xs p-2">Video</div>' : `<img src="${firstMedia?.url}" class="object-cover h-full w-full" />`}
+                            ${isVideo 
+                                ? '<div class="text-xs p-2 font-bold text-center mt-6">VIDEO</div>' 
+                                : `<img src="${firstMediaUrl}" class="object-cover h-full w-full" onerror="this.src='https://placehold.co/100x100/ffeeee/ff0000?text=Error'" />`}
                         </figure>
                         <div class="flex-1 overflow-hidden">
-                            <p class="text-xs font-bold">${post.media_urls.length} Media</p>
-                            <p class="text-[10px] italic truncate">"${post.caption}"</p>
+                            <p class="text-xs font-bold text-primary">${urls.length} Media</p>
+                            <p class="text-sm italic truncate">"${post.caption || 'Tanpa caption'}"</p>
                             <div class="card-actions justify-end mt-2">
-                                <button onclick="deletePost(${post.id}, ${JSON.stringify(post.media_urls.map(m => m.path))})" 
-                                        class="btn btn-error btn-xs btn-outline">Hapus</button>
+                                <button onclick="deletePost(${post.id}, '${encodedUrls}')" class="btn btn-error btn-xs btn-outline">Hapus</button>
                             </div>
                         </div>
                     </div>`;
             });
         }
 
-        window.deletePost = async (id, paths) => {
-            if (!confirm("Hapus postingan ini?")) return;
-            await supabase.from('posts').delete().eq('id', id);
-            await supabase.storage.from('gallery').remove(paths);
-            loadAdminPosts();
+        // --- FUNGSI HAPUS POSTINGAN ---
+        window.deletePost = async (id, encodedUrls) => {
+            if (!confirm("Yakin ingin menghapus momen ini secara permanen?")) return;
+            
+            try {
+                // Hapus data dari Database
+                await supabase.from('posts').delete().eq('id', id);
+
+                // Decode dan hapus file dari Storage
+                const urls = JSON.parse(decodeURIComponent(encodedUrls));
+                const pathsToDelete = urls.map(url => {
+                    // Ekstrak path dari URL Supabase (membuang awalan public URL)
+                    const marker = '/public/gallery/';
+                    const idx = url.indexOf(marker);
+                    if (idx !== -1) return url.substring(idx + marker.length);
+                    return null;
+                }).filter(Boolean); // Buang yang null
+
+                if (pathsToDelete.length > 0) {
+                    await supabase.storage.from('gallery').remove(pathsToDelete);
+                }
+
+                loadAdminPosts();
+            } catch (err) {
+                console.error("Gagal menghapus:", err);
+                alert("Gagal menghapus postingan.");
+            }
         };
 
+        // Inisiasi awal
         loadAdminPosts();
     </script>
 </body>
