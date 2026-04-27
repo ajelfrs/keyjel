@@ -154,48 +154,56 @@
         }
 
         function renderGallery(posts) {
-            galleryContainer.innerHTML = '';
-            
-            if (posts.length === 0) {
-                galleryContainer.innerHTML = '<div class="col-span-full text-center py-10 opacity-50">Belum ada momen yang dibagikan.</div>';
-                return;
-            }
-
-            posts.forEach(post => {
-                const isLiked = localStorage.getItem(`liked_${post.id}`);
-                const isVideo = post.image_url.match(/\.(mp4|webm|ogg|mov)$/i);
-                
-                // Menghitung jumlah komentar
-                const commentCount = post.comments ? post.comments.length : 0;
-                
-                // Tambahin loading="lazy" buat optimasi gambar
-                const mediaHtml = isVideo 
-                    ? `<video src="${post.image_url}" class="w-full object-cover" muted loop autoplay playsinline></video>`
-                    : `<img src="${post.image_url}" loading="lazy" class="w-full object-cover hover:scale-105 transition-transform duration-500" alt="Momen spesial" />`;
-
-                galleryContainer.innerHTML += `
-                    <div class="break-inside-avoid mb-6 card bg-base-100 shadow-xl overflow-hidden animate__animated animate__fadeInUp">
-                        <figure class="rounded-t-2xl">${mediaHtml}</figure>
-                        <div class="card-body p-4">
-                            <p class="text-sm italic opacity-90">"${post.caption}"</p>
-                            <div class="card-actions justify-between items-center mt-4 border-t border-base-200 pt-3">
-                                <div class="flex gap-4">
-                                    <button onclick="handleLike(${post.id}, ${post.likes})" id="btn-like-${post.id}" class="flex items-center gap-1 hover:text-error transition-colors ${isLiked ? 'text-error font-bold' : ''}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="${isLiked ? 'currentColor' : 'none'}" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                                        <span id="count-${post.id}" class="text-xs font-medium">${post.likes}</span>
-                                    </button>
-                                    
-                                    <button onclick="openComment(${post.id})" class="flex items-center gap-1 hover:text-primary transition-colors">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                                        <span class="text-xs font-medium">${commentCount}</span>
-                                    </button>
-                                </div>
-                                <span class="text-[10px] opacity-40">${new Date(post.created_at).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'})}</span>
-                            </div>
+    galleryContainer.innerHTML = '';
+    posts.forEach(post => {
+        const mediaItems = post.media_urls || []; // Ambil array media
+        const postId = post.id;
+        
+        // Bikin HTML buat Carousel
+        let carouselContent = '';
+        mediaItems.forEach((media, index) => {
+            const isVideo = media.url.match(/\.(mp4|webm|ogg|mov)$/i);
+            carouselContent += `
+                <div id="slide-${postId}-${index}" class="carousel-item relative w-full">
+                    ${isVideo 
+                        ? `<video src="${media.url}" class="w-full object-cover" muted loop autoplay playsinline></video>`
+                        : `<img src="${media.url}" class="w-full object-cover" loading="lazy" />`}
+                    
+                    ${mediaItems.length > 1 ? `
+                        <div class="absolute flex justify-between transform -translate-y-1/2 left-2 right-2 top-1/2">
+                            <a href="#slide-${postId}-${index === 0 ? mediaItems.length - 1 : index - 1}" class="btn btn-circle btn-xs opacity-50">❮</a> 
+                            <a href="#slide-${postId}-${index === mediaItems.length - 1 ? 0 : index + 1}" class="btn btn-circle btn-xs opacity-50">❯</a>
                         </div>
-                    </div>`;
-            });
-        }
+                        <div class="absolute bottom-2 right-2 badge badge-ghost text-[10px]">${index + 1}/${mediaItems.length}</div>
+                    ` : ''}
+                </div>
+            `;
+        });
+
+        galleryContainer.innerHTML += `
+            <div class="break-inside-avoid mb-6 card bg-base-100 shadow-xl overflow-hidden animate__animated animate__fadeInUp">
+                <div class="carousel w-full h-auto min-h-[200px] bg-base-300">
+                    ${carouselContent}
+                </div>
+                <div class="card-body p-4">
+                    <p class="text-sm italic opacity-90">"${post.caption}"</p>
+                    <div class="card-actions justify-between items-center mt-4 border-t pt-3">
+                        <div class="flex gap-4">
+                            <button onclick="handleLike(${post.id}, ${post.likes})" id="btn-like-${post.id}" class="flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                                <span id="count-${post.id}" class="text-xs font-medium">${post.likes}</span>
+                            </button>
+                            <button onclick="openComment(${post.id})" class="flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                                <span class="text-xs font-medium">${post.comments ? post.comments.length : 0}</span>
+                            </button>
+                        </div>
+                        <span class="text-[10px] opacity-40">${new Date(post.created_at).toLocaleDateString()}</span>
+                    </div>
+                </div>
+            </div>`;
+    });
+}
 
         // --- KOMENTAR & LIKE ---
         window.openComment = async (postId) => {
