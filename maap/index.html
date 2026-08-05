@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maafin Aku Ya? 🥺</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Playfair+Display:ital,wght@0,600;1,700&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    
+    <style>
+        /* Flowing Soft Background */
+        body { 
+            font-family: 'Outfit', sans-serif; 
+            margin: 0;
+            overflow-x: hidden;
+            background: linear-gradient(-45deg, #a1c4fd, #c2e9fb, #fecfef, #ff9a9e);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: #2d3748;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .font-serif { font-family: 'Playfair Display', serif; }
+        .font-handwriting { font-family: 'Kalam', cursive; }
+        
+        /* Premium Glassmorphism */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15), inset 0 0 0 1px rgba(255,255,255,0.4);
+        }
+
+        /* Typewriter Cursor */
+        .typing-cursor::after {
+            content: '|';
+            animation: blink 1s infinite;
+            color: #ff4757;
+            font-weight: bold;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* Polaroid Style */
+        .polaroid {
+            background: white;
+            padding: 10px 10px 20px 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            transform: rotate(-3deg);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .polaroid:hover { transform: rotate(2deg) scale(1.08); }
+
+        /* Scrollbar Halus */
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255, 117, 140, 0.6); border-radius: 10px; }
+
+        canvas { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 0; }
+        
+        /* Spotlight Effect di Halaman Depan */
+        .spotlight {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse-spotlight 3s infinite alternate;
+            z-index: -1;
+        }
+        @keyframes pulse-spotlight {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            100% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
+        }
+
+        /* Crystal Button */
+        .crystal-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2), inset 0 0 10px rgba(255,255,255,0.5);
+            animation: float-btn 3s ease-in-out infinite;
+        }
+        .crystal-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.6), inset 0 0 15px rgba(255,255,255,0.8);
+            transform: scale(1.05);
+        }
+        @keyframes float-btn {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center">
+
+    <!-- Efek Partikel -->
+    <canvas id="fireflies"></canvas>
+
+    <!-- Audio Player -->
+    <audio id="bg-music" loop>
+        <source src="https://cdn.pixabay.com/download/audio/2022/01/18/audio_82f1fb5f09.mp3?filename=sad-piano-ambient-background-music-for-video-short-124-9549.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Halaman Depan / Pancingan (Sekarang lebih dramatis & estetik) -->
+    <div id="cover-screen" class="absolute inset-0 flex flex-col items-center justify-center z-50 transition-all duration-1000 p-4 text-center bg-gray-900/60 backdrop-blur-md">
+        <div class="relative flex flex-col items-center animate__animated animate__fadeIn">
+            <!-- Lingkaran cahaya di belakang GIF -->
+            <div class="spotlight"></div>
+            
+            <!-- GIF Kucing/Beruang Nangis Lucu -->
+            <img src="https://media.tenor.com/2bXyO6Q1TgwAAAAi/peach-cat-crying.gif" alt="Crying Cat" class="w-40 h-40 md:w-48 md:h-48 mb-6 drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">
+            
+            <h1 class="text-3xl md:text-5xl font-serif font-bold text-white drop-shadow-lg mb-2">
+                Utututuu masi marah ya? 
+            </h1>
+            <p class="text-gray-200 text-lg md:text-xl font-light tracking-wide mb-10 drop-shadow-md">
+                Buka dulu yaa sayang
+            </p>
+
+            <!-- Tombol Kristal -->
+            <button onclick="openMagic()" class="crystal-btn px-8 py-3 rounded-full text-white font-bold tracking-widest uppercase transition-all duration-300 flex items-center gap-3">
+                <span>Buka Surat</span>
+                <span class="text-2xl animate-bounce inline-block">💌</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content / Surat Minta Maaf -->
+    <div id="main-content" class="hidden w-full max-w-md p-5 z-10 relative h-[90vh] flex flex-col justify-center perspective-1000">
+        <!-- Vanilla Tilt Card -->
+        <div id="tilt-card" class="glass-card rounded-[2rem] p-6 flex flex-col h-full transform transition-all duration-500 shadow-2xl">
+            
+            <!-- Foto Polaroid (Bisa diganti foto muka sedihmu) -->
+            <div class="flex-none flex justify-center mb-4 mt-2">
+                <div class="polaroid">
+                    <img src="kela.jpg" alt="I am sorry" class="w-32 h-32 object-cover border border-gray-200">
+                    <p class="text-center mt-3 font-handwriting text-xl text-gray-700 font-bold">Maapin aku ya sayang❤️</p>
+                </div>
+            </div>
+
+            <!-- Isi Surat -->
+            <div class="flex-1 overflow-y-auto custom-scroll pr-3 my-2 text-justify">
+                <p id="isi-surat" class="text-gray-800 leading-relaxed text-sm md:text-base font-medium typing-cursor"></p>
+            </div>
+
+            <!-- Tombol Aksi -->
+            <div id="action-btn" class="flex-none mt-4 opacity-0 transition-opacity duration-1000 flex flex-col gap-3">
+                <button onclick="maafinDong()" class="w-full bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white font-bold py-3 px-6 rounded-xl shadow-[0_0_15px_rgba(52,211,153,0.5)] transition-all duration-300 transform hover:scale-[1.02]">
+                    Iya, aku maafin kok 🥺❤️
+                </button>
+                <button id="btn-tolak" onmouseover="hindar()" onclick="hindar()" class="w-full bg-gradient-to-r from-red-400 to-rose-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all duration-100 relative">
+                    Gak! Masih kesel! 😤
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Vanilla Tilt -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+
+    <script>
+        // --- KONFIGURASI --- //
+        const myWhatsapp = "6281916604622"; 
+        
+        const suratContent = `Alooo Sayangtuuu...<br><br>
+        Kamuuu lagii marahh yakkk, pastiii pacarkuuu capeee samaa ajell. Gapapaaa koo sayangg kalooo mauu marahh marah ajaaa gapapaaa, tapiii jangann tinggalinn akuuu yyaaa.<br><br>
+        Maapinnn akuu yyaa sayangg kalooo seringg bikinn kamuu betmuttt, bikinn kamuuu sakitt hatiii, entahh sengajaaa maupunn enggaaa akuu mintaaa maappp yyaaa sayanggg<br><br>
+        Akuuu bakalll berusahaaa memperbaikiii kesalahann² kuuu sayanggg. Mungkinnn banyaaa bangettt kesalahann yangg akuuu lakuinnn, tapii akuuu bakalll berusahaa memperbaikiii. Makasiii yyaaa sayanggg udaaa sabarrr bangetttt ngadepinnn akuu, gapernaaa larii pass akuuu marahhhh. Makasiiii banyaaa cintaaa<br><br>
+        <i>I Love U Sayanggg</i> ❤️`;
+
+        // --- LOGIKA UTAMA --- //
+        function openMagic() {
+            // Mainkan musik
+            const bgMusic = document.getElementById('bg-music');
+            bgMusic.volume = 0.5;
+            bgMusic.play().catch(e => console.log("Autoplay diblokir browser"));
+
+            const cover = document.getElementById('cover-screen');
+            const mainContent = document.getElementById('main-content');
+            
+            // Transisi dari layar gelap ke terang
+            cover.classList.remove('bg-gray-900/60');
+            cover.classList.add('bg-transparent');
+            cover.style.opacity = '0';
+            
+            setTimeout(() => {
+                cover.classList.add('hidden');
+                mainContent.classList.remove('hidden');
+                mainContent.classList.add('animate__animated', 'animate__zoomIn');
+                
+                VanillaTilt.init(document.querySelector("#tilt-card"), {
+                    max: 8,
+                    speed: 400,
+                    glare: true,
+                    "max-glare": 0.15,
+                });
+
+                // Mulai ngetik surat
+                setTimeout(() => {
+                    typeWriter(suratContent, "isi-surat", 40);
+                }, 600);
+
+            }, 800); 
+        }
+
+        function typeWriter(text, elementId, speed = 40) {
+            let i = 0;
+            const container = document.getElementById(elementId);
+            container.innerHTML = ""; 
+            const actionBtn = document.getElementById('action-btn');
+            
+            function type() {
+                if (i < text.length) {
+                    if (text.charAt(i) === '<') {
+                        let tagEnd = text.indexOf('>', i);
+                        container.innerHTML += text.substring(i, tagEnd + 1);
+                        i = tagEnd + 1;
+                    } else {
+                        container.innerHTML += text.charAt(i);
+                        i++;
+                    }
+                    
+                    const scrollContainer = container.parentElement;
+                    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                    
+                    setTimeout(type, speed); 
+                } else {
+                    container.classList.remove('typing-cursor');
+                    actionBtn.classList.remove('opacity-0');
+                    actionBtn.classList.add('animate__animated', 'animate__fadeInUp');
+                }
+            }
+            type();
+        }
+
+        function maafinDong() {
+            const textWA = "Iyaaa bawel, aku maafin. Tapi awas aja ya kalo diulangin lagi! 😤❤️ Sini beliin aku jajan!";
+            window.location.href = `https://wa.me/${myWhatsapp}?text=${encodeURIComponent(textWA)}`;
+        }
+
+        // FUNGSI TOMBOL NGINDAR
+        function hindar() {
+            const btn = document.getElementById('btn-tolak');
+            const pesan = ["Gak kena wekk 😝", "Udah dong ngambeknya", "Maafin aja napa 🥺", "Klik yang atas aja sayang", "Licin kan tombolnya?"];
+            btn.innerText = pesan[Math.floor(Math.random() * pesan.length)];
+            
+            btn.style.position = 'fixed';
+            btn.style.zIndex = '9999';
+            
+            // Hitung ukuran aman biar gak keluar layar
+            const btnWidth = btn.offsetWidth;
+            const btnHeight = btn.offsetHeight;
+            const maxX = window.innerWidth - btnWidth - 20;
+            const maxY = window.innerHeight - btnHeight - 20;
+            
+            const randomX = Math.max(20, Math.random() * maxX);
+            const randomY = Math.max(20, Math.random() * maxY);
+            
+            btn.style.left = randomX + 'px';
+            btn.style.top = randomY + 'px';
+        }
+
+        // --- EFEK CANVAS FIREFLIES --- //
+        const canvas = document.getElementById("fireflies");
+        const ctx = canvas.getContext("2d");
+        let particlesArray = [];
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        window.addEventListener("resize", () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 3 + 1;
+                this.speedX = Math.random() * 1 - 0.5;
+                this.speedY = Math.random() * 1 - 0.5;
+                this.opacity = Math.random() * 0.5 + 0.1;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = "#fff";
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            for (let i = 0; i < 50; i++) {
+                particlesArray.push(new Particle());
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particlesArray.length; i++) {
+                particlesArray[i].update();
+                particlesArray[i].draw();
+            }
+            requestAnimationFrame(animateParticles);
+        }
+
+        initParticles();
+        animateParticles();
+    </script>
+</body>
+  </html>
+  
